@@ -22,11 +22,28 @@ class OrderController {
         totalWeight,
         totalFee,
         payment,
-        status: 'Drop'
+        status: "Drop",
       });
-      res.status(201).json(newOrder)
+      res.status(201).json(newOrder);
     } catch (error) {
       next(error);
+    }
+  }
+
+  static async read(req, res, next) {
+    try {
+      const { role, id } = req.decoded;
+      let orders 
+
+      if(role === 'Admin') {
+        orders = await Order.findAll()
+      } else {
+        orders = await Order.findAll({where: {UserId: id}})
+      }
+
+      res.status(200).json(orders)
+    } catch (error) {
+      next(error)
     }
   }
 }
