@@ -1,6 +1,7 @@
 const { Order, User, Service } = require("../models");
 const kickboxGet = require("../apis/kickbox.js");
 const mathjsPost = require("../apis/mathjs");
+const { Op } = require("sequelize");
 
 class OrderController {
   static async create(req, res, next) {
@@ -47,10 +48,18 @@ class OrderController {
       let offset;
 
       if (role === "Admin") {
-        const { page, limit = 4 } = req.query;
+        const { page, limit = 4, email } = req.query;
+        const filter = {};
 
-        if(page) {
+        if (page) {
           offset = (page - 1) * limit;
+        }
+
+        if (email) {
+          const users = await User.findAll({
+            where: { email: { [Op.like]: `%${email}%` } },
+          });
+          filter.UserId = users.map((el) => el.id)
         }
 
         orders = await Order.findAndCountAll({
@@ -64,14 +73,18 @@ class OrderController {
               },
             },
           ],
-          offset, limit
+          offset,
+          limit,
+          where: filter,
         });
+        console.log({ orders });
       } else {
         orders = await Order.findAll({ where: { UserId: id } });
       }
 
       res.status(200).json(orders);
     } catch (error) {
+      console.log(error);
       next(error);
     }
   }
