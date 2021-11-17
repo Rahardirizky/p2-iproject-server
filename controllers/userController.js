@@ -32,7 +32,7 @@ class UserController {
             role: user.role,
           };
           const token = getToken(payload);
-          res.status(200).json({ token });
+          res.status(200).json({ token, user });
         } else {
           next({
             status: 401,
