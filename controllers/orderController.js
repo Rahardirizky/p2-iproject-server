@@ -1,6 +1,6 @@
 const { Order, User, Service } = require("../models");
 const kickboxGet = require("../apis/kickbox.js");
-const mathjsPost = require("../apis/mathjs")
+const mathjsPost = require("../apis/mathjs");
 
 class OrderController {
   static async create(req, res, next) {
@@ -11,11 +11,11 @@ class OrderController {
       user = await User.findOne({ where: { email } });
       const { disposable } = await kickboxGet(email.split("@")[1]);
 
-      if(disposable) {
+      if (disposable) {
         next({
           status: 403,
-          msg: 'Email Unauthorized'
-        })
+          msg: "Email Unauthorized",
+        });
       }
 
       if (!user) {
@@ -44,9 +44,16 @@ class OrderController {
     try {
       const { role, id } = req.decoded;
       let orders;
+      let offset;
 
       if (role === "Admin") {
-        orders = await Order.findAll({
+        const { page, limit = 4 } = req.query;
+
+        if(page) {
+          offset = (page - 1) * limit;
+        }
+
+        orders = await Order.findAndCountAll({
           include: [
             { model: Service, required: true },
             {
@@ -57,6 +64,7 @@ class OrderController {
               },
             },
           ],
+          offset, limit
         });
       } else {
         orders = await Order.findAll({ where: { UserId: id } });
@@ -84,19 +92,19 @@ class OrderController {
     try {
       const { ServiceId, totalWeight } = req.body;
 
-      const service = await Service.findByPk(ServiceId)
+      const service = await Service.findByPk(ServiceId);
 
-      if(service) {
-        const totalFee = await mathjsPost(`${service.fee} * ${totalWeight}`)
-        res.status(200).json(totalFee.result)
+      if (service) {
+        const totalFee = await mathjsPost(`${service.fee} * ${totalWeight}`);
+        res.status(200).json(totalFee.result);
       } else {
         next({
           status: 404,
-          msg: 'Error not found'
-        })
+          msg: "Error not found",
+        });
       }
     } catch (error) {
-      next(error)
+      next(error);
     }
   }
 }
