@@ -1,4 +1,5 @@
 const { Order, User, Service } = require("../models");
+const kickboxGet = require("../apis/kickbox.js");
 
 class OrderController {
   static async create(req, res, next) {
@@ -7,6 +8,14 @@ class OrderController {
       const { email, ServiceId, totalWeight, totalFee, payment } = req.body;
 
       user = await User.findOne({ where: { email } });
+      const { disposable } = await kickboxGet(email.split("@")[1]);
+
+      if(disposable) {
+        next({
+          status: 403,
+          msg: 'Email Unauthorized'
+        })
+      }
 
       if (!user) {
         user = await User.create({
