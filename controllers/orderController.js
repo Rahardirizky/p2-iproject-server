@@ -1,5 +1,6 @@
 const { Order, User, Service } = require("../models");
 const kickboxGet = require("../apis/kickbox.js");
+const mathjsPost = require("../apis/mathjs")
 
 class OrderController {
   static async create(req, res, next) {
@@ -76,6 +77,26 @@ class OrderController {
       res.status(200).json({ msg: "Succes Update" });
     } catch (error) {
       next(error);
+    }
+  }
+
+  static async getTotalFee(req, res, next) {
+    try {
+      const { ServiceId, totalWeight } = req.body;
+
+      const service = await Service.findByPk(ServiceId)
+
+      if(service) {
+        const totalFee = await mathjsPost(`${service.fee} * ${totalWeight}`)
+        res.status(200).json(totalFee.result)
+      } else {
+        next({
+          status: 404,
+          msg: 'Error not found'
+        })
+      }
+    } catch (error) {
+      next(error)
     }
   }
 }
