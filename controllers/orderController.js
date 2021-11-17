@@ -122,7 +122,19 @@ class OrderController {
         });
         console.log({ orders });
       } else {
-        orders = await Order.findAll({ where: { UserId: id } });
+        orders = await Order.findAll({
+          where: { UserId: id },
+          include: [
+            { model: Service, required: true },
+            {
+              model: User,
+              required: true,
+              attributes: {
+                exclude: ["password"],
+              },
+            },
+          ],
+        });
       }
 
       res.status(200).json(orders);
@@ -156,7 +168,7 @@ class OrderController {
         }
       );
 
-      const user = await User.findByPk(updatedOrder[1].UserId) 
+      const user = await User.findByPk(updatedOrder[1].UserId);
       console.log(user, updatedOrder[1]);
 
       if (status === "Finish") {
