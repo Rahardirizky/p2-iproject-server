@@ -2,29 +2,65 @@ const { Order, User, Service } = require("../models");
 const kickboxGet = require("../apis/kickbox.js");
 const mathjsPost = require("../apis/mathjs");
 const { Op } = require("sequelize");
+const emailSent = require("../helpers/nodemailer");
 
 class OrderController {
   static async create(req, res, next) {
     try {
       let user;
+      let body;
       const { email, ServiceId, totalWeight, totalFee, payment } = req.body;
 
       user = await User.findOne({ where: { email } });
       const { disposable } = await kickboxGet(email.split("@")[1]);
 
-      if (disposable) {
-        next({
-          status: 403,
-          msg: "Email Unauthorized",
-        });
-      }
-
       if (!user) {
-        user = await User.create({
-          email,
-          password: process.env.DEFAULT_PASSWORD,
-          role: "Customer",
-        });
+        if (disposable) {
+          next({
+            status: 403,
+            msg: "Email Unauthorized",
+          });
+        } else {
+          user = await User.create({
+            email,
+            password: process.env.DEFAULT_PASSWORD,
+            role: "Customer",
+          });
+          body = {
+            from: `"Laundry's Work" <${process.env.EMAIL}>`,
+            to: email,
+            subject: "password account and receipt",
+            html: `
+            <p> Dear, ${email.split("@")[0]} </p>
+
+            <p> Here is your password: 12345</p>
+            <p> and your receipt</p>
+
+            <p>Total Weight: ${totalWeight}</p>
+            <p>Total Fee: ${totalFee}</p>
+            <p>and with status: ${payment}</p>
+
+            <p>Thankyou</p>
+            `,
+          };
+        }
+      } else {
+        body = {
+          from: `"Laundry's Work" <${process.env.EMAIL}>`,
+          to: email,
+          subject: "password account and receipt",
+          html: `
+          <p> Dear, ${email.split("@")[0]} </p>
+
+          <p> Here is your receipt</p>
+
+          <p>Total Weight: ${totalWeight}</p>
+          <p>Total Fee: ${totalFee}</p>
+          <p>and with status: ${payment}</p>
+
+          <p>Thankyou</p>
+          `,
+        };
       }
 
       const newOrder = await Order.create({
@@ -35,6 +71,13 @@ class OrderController {
         payment,
         status: "Drop",
       });
+
+      emailSent.sendMail(body, (error) => {
+        if (error) {
+          throw new Error(error);
+        }
+      });
+
       res.status(201).json(newOrder);
     } catch (error) {
       next(error);
@@ -59,7 +102,7 @@ class OrderController {
           const users = await User.findAll({
             where: { email: { [Op.like]: `%${email}%` } },
           });
-          filter.UserId = users.map((el) => el.id)
+          filter.UserId = users.map((el) => el.id);
         }
 
         orders = await Order.findAndCountAll({
@@ -94,9 +137,52 @@ class OrderController {
       const { status, payment } = req.body;
       const { id } = req.params;
 
-      await Order.update({ status, payment }, { where: { id } });
+      const updatedOrder = await Order.update(
+        { status, payment },
+        {
+          where: { id },
+          returning: true,
+          plain: true,
+          include: [
+            { model: Service, required: true },
+            {
+              model: User,
+              required: true,
+              attributes: {
+                exclude: ["password"],
+              },
+            },
+          ],
+        }
+      );
+
+      const user = await User.findByPk(updatedOrder[1].UserId) 
+      console.log(user, updatedOrder[1]);
+
+      if (status === "Finish") {
+        const body = {
+          from: `"Laundry's Work" <${process.env.EMAIL}>`,
+          to: user.email,
+          subject: "password account and receipt",
+          html: `
+          <p> Dear, ${user.email.split("@")[0]} </p>
+
+          <p> Your laundry has been finished</p>
+
+          <p>Thankyou</p>
+          `,
+        };
+
+        emailSent.sendMail(body, (error) => {
+          if (error) {
+            throw new Error(error);
+          }
+        });
+      }
+
       res.status(200).json({ msg: "Succes Update" });
     } catch (error) {
+      console.log(error);
       next(error);
     }
   }
