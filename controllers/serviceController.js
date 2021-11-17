@@ -18,6 +18,15 @@ class ServiceController {
         res.status(201).json(service);
       }
     } catch (error) {
+      next(error);
+    }
+  }
+
+  static async read(req, res, next) {
+    try {
+      const get = await Service.findAll()
+      res.status(200).json(get)
+    } catch (error) {
       next(error)
     }
   }
