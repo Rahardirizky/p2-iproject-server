@@ -1,4 +1,4 @@
-const { Order, User } = require("../models");
+const { Order, User, Service } = require("../models");
 
 class OrderController {
   static async create(req, res, next) {
@@ -36,7 +36,18 @@ class OrderController {
       let orders;
 
       if (role === "Admin") {
-        orders = await Order.findAll();
+        orders = await Order.findAll({
+          include: [
+            { model: Service, required: true },
+            {
+              model: User,
+              required: true,
+              attributes: {
+                exclude: ["password"],
+              },
+            },
+          ],
+        });
       } else {
         orders = await Order.findAll({ where: { UserId: id } });
       }
@@ -55,7 +66,7 @@ class OrderController {
       await Order.update({ status, payment }, { where: { id } });
       res.status(200).json({ msg: "Succes Update" });
     } catch (error) {
-      next(error)
+      next(error);
     }
   }
 }
