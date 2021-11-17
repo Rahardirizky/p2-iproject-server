@@ -33,15 +33,27 @@ class OrderController {
   static async read(req, res, next) {
     try {
       const { role, id } = req.decoded;
-      let orders 
+      let orders;
 
-      if(role === 'Admin') {
-        orders = await Order.findAll()
+      if (role === "Admin") {
+        orders = await Order.findAll();
       } else {
-        orders = await Order.findAll({where: {UserId: id}})
+        orders = await Order.findAll({ where: { UserId: id } });
       }
 
-      res.status(200).json(orders)
+      res.status(200).json(orders);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async edit(req, res, next) {
+    try {
+      const { status, payment } = req.body;
+      const { id } = req.params;
+
+      await Order.update({ status, payment }, { where: { id } });
+      res.status(200).json({ msg: "Succes Update" });
     } catch (error) {
       next(error)
     }
